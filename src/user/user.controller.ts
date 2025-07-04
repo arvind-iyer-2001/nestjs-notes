@@ -22,19 +22,23 @@ export class UserController {
   async getUsers(
     @Query(ValidationPipe) query: GetUsersQueryDto,
   ): Promise<User[]> {
-    // ✅ Controller only handles HTTP concerns
     return this.userService.findManyUsers(query);
+  }
+
+  @Get('deleted')
+  async getDeletedUsers(
+    @Query(ValidationPipe) query: GetUsersQueryDto,
+  ): Promise<User[]> {
+    return this.userService.findDeletedUsers(query);
   }
 
   @Get(':id')
   async getUserById(@Param('id', ParseIntPipe) id: number): Promise<User> {
-    // ✅ Simple delegation to service
     return this.userService.findUserById(id);
   }
 
   @Get('email/:email')
   async getUserByEmail(@Param('email') email: string): Promise<User> {
-    // ✅ Simple delegation to service
     return this.userService.findUserByEmail(email);
   }
 
@@ -42,7 +46,6 @@ export class UserController {
   async createUser(
     @Body(ValidationPipe) userData: CreateUserDto,
   ): Promise<User> {
-    // ✅ No business logic or error handling in controller
     return this.userService.createUser(userData);
   }
 
@@ -51,13 +54,26 @@ export class UserController {
     @Param('id', ParseIntPipe) id: number,
     @Body(ValidationPipe) userData: UpdateUserDto,
   ): Promise<User> {
-    // ✅ Clean delegation
     return this.userService.updateUser(id, userData);
   }
 
+  // Soft delete
   @Delete(':id')
   async deleteUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
-    // ✅ Clean delegation
     return this.userService.deleteUser(id);
+  }
+
+  // Restore soft deleted user
+  @Put(':id/restore')
+  async restoreUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
+    return this.userService.restoreUser(id);
+  }
+
+  // Permanent delete
+  @Delete(':id/permanent')
+  async permanentlyDeleteUser(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<User> {
+    return this.userService.permanentlyDeleteUser(id);
   }
 }

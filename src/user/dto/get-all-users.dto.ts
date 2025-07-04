@@ -22,10 +22,10 @@ export class GetUsersQueryDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['id', 'email', 'name'], {
-    message: 'orderBy must be one of: id, email, name',
+  @IsIn(['id', 'email', 'name', 'createdAt', 'updatedAt'], {
+    message: 'orderBy must be one of: id, email, name, createdAt, updatedAt',
   })
-  orderBy?: 'id' | 'email' | 'name';
+  orderBy?: 'id' | 'email' | 'name' | 'createdAt' | 'updatedAt';
 
   @IsOptional()
   @IsString()

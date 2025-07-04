@@ -8,10 +8,23 @@ describe('UserController', () => {
   let controller: UserController;
   let mockUserService: jest.Mocked<UserService>;
 
+  // Updated mock data with timestamps and deletedAt
   const mockUser = {
     id: 1,
     email: 'test@example.com',
     name: 'Test User',
+    createdAt: new Date('2024-01-01T00:00:00Z'),
+    updatedAt: new Date('2024-01-01T00:00:00Z'),
+    deletedAt: null,
+  };
+
+  const mockDeletedUser = {
+    id: 3,
+    email: 'deleted@example.com',
+    name: 'Deleted User',
+    createdAt: new Date('2024-01-01T00:00:00Z'),
+    updatedAt: new Date('2024-01-02T00:00:00Z'),
+    deletedAt: new Date('2024-01-02T00:00:00Z'),
   };
 
   const mockUsers = [
@@ -20,10 +33,13 @@ describe('UserController', () => {
       id: 2,
       email: 'test2@example.com',
       name: 'Test User 2',
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+      updatedAt: new Date('2024-01-01T00:00:00Z'),
+      deletedAt: null,
     },
   ];
 
-  // Mock only the new business logic methods
+  // Updated mock service methods to include new soft delete methods
   const mockUserServiceMethods = {
     findManyUsers: jest.fn(),
     findUserById: jest.fn(),
@@ -31,6 +47,9 @@ describe('UserController', () => {
     createUser: jest.fn(),
     updateUser: jest.fn(),
     deleteUser: jest.fn(),
+    restoreUser: jest.fn(),
+    permanentlyDeleteUser: jest.fn(),
+    findDeletedUsers: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -59,16 +78,16 @@ describe('UserController', () => {
   });
 
   // ========================================
-  // CLEAN CONTROLLER TESTS - HTTP LAYER ONLY
+  // EXISTING ENDPOINT TESTS (UPDATED)
   // ========================================
 
   describe('getUsers', () => {
-    it('should delegate to service and return users', async () => {
+    it('should delegate to service and return active users', async () => {
       const query: GetUsersQueryDto = {
         skip: 10,
         take: 20,
         search: 'test',
-        orderBy: 'name',
+        orderBy: 'createdAt', // Updated to use new timestamp field
         sortOrder: 'desc',
       };
 
@@ -101,7 +120,7 @@ describe('UserController', () => {
   });
 
   describe('getUserById', () => {
-    it('should delegate to service and return user', async () => {
+    it('should delegate to service and return active user', async () => {
       const userId = 1;
       mockUserService.findUserById.mockResolvedValue(mockUser);
 
@@ -125,7 +144,7 @@ describe('UserController', () => {
   });
 
   describe('getUserByEmail', () => {
-    it('should delegate to service and return user', async () => {
+    it('should delegate to service and return active user', async () => {
       const email = 'test@example.com';
       mockUserService.findUserByEmail.mockResolvedValue(mockUser);
 
@@ -154,17 +173,23 @@ describe('UserController', () => {
       name: 'New User',
     };
 
-    it('should delegate to service and return created user', async () => {
+    it('should delegate to service and return created user with timestamps', async () => {
       const createdUser = {
         id: 3,
         email: createUserDto.email,
         name: createUserDto.name ?? null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
       };
       mockUserService.createUser.mockResolvedValue(createdUser);
 
       const result = await controller.createUser(createUserDto);
 
       expect(result).toEqual(createdUser);
+      expect(result.createdAt).toBeDefined();
+      expect(result.updatedAt).toBeDefined();
+      expect(result.deletedAt).toBeNull();
       expect(mockUserService.createUser).toHaveBeenCalledWith(createUserDto);
       expect(mockUserService.createUser).toHaveBeenCalledTimes(1);
     });
@@ -197,7 +222,11 @@ describe('UserController', () => {
 
     it('should delegate to service and return updated user', async () => {
       const userId = 1;
-      const updatedUser = { ...mockUser, ...updateUserDto };
+      const updatedUser = {
+        ...mockUser,
+        ...updateUserDto,
+        updatedAt: new Date(), // updatedAt should be updated
+      };
       mockUserService.updateUser.mockResolvedValue(updatedUser);
 
       const result = await controller.updateUser(userId, updateUserDto);
@@ -241,7 +270,11 @@ describe('UserController', () => {
     it('should handle partial update data', async () => {
       const userId = 1;
       const partialUpdateDto: UpdateUserDto = { name: 'Only Name Updated' };
-      const updatedUser = { ...mockUser, name: 'Only Name Updated' };
+      const updatedUser = {
+        ...mockUser,
+        name: 'Only Name Updated',
+        updatedAt: new Date(),
+      };
       mockUserService.updateUser.mockResolvedValue(updatedUser);
 
       const result = await controller.updateUser(userId, partialUpdateDto);
@@ -254,14 +287,20 @@ describe('UserController', () => {
     });
   });
 
-  describe('deleteUser', () => {
-    it('should delegate to service and return deleted user', async () => {
+  describe('deleteUser (soft delete)', () => {
+    it('should delegate to service and return soft deleted user', async () => {
       const userId = 1;
-      mockUserService.deleteUser.mockResolvedValue(mockUser);
+      const softDeletedUser = {
+        ...mockUser,
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockUserService.deleteUser.mockResolvedValue(softDeletedUser);
 
       const result = await controller.deleteUser(userId);
 
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(softDeletedUser);
+      expect(result.deletedAt).toBeTruthy();
       expect(mockUserService.deleteUser).toHaveBeenCalledWith(userId);
       expect(mockUserService.deleteUser).toHaveBeenCalledTimes(1);
     });
@@ -289,21 +328,169 @@ describe('UserController', () => {
   });
 
   // ========================================
-  // HTTP-SPECIFIC CONCERNS TESTS
+  // NEW SOFT DELETE ENDPOINT TESTS
+  // ========================================
+
+  describe('getDeletedUsers', () => {
+    it('should delegate to service and return deleted users', async () => {
+      const query: GetUsersQueryDto = {
+        skip: 0,
+        take: 10,
+        search: 'deleted',
+      };
+      const deletedUsers = [mockDeletedUser];
+      mockUserService.findDeletedUsers.mockResolvedValue(deletedUsers);
+
+      const result = await controller.getDeletedUsers(query);
+
+      expect(result).toEqual(deletedUsers);
+      expect(mockUserService.findDeletedUsers).toHaveBeenCalledWith(query);
+      expect(mockUserService.findDeletedUsers).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle empty query for deleted users', async () => {
+      const query: GetUsersQueryDto = {};
+      mockUserService.findDeletedUsers.mockResolvedValue([]);
+
+      const result = await controller.getDeletedUsers(query);
+
+      expect(result).toEqual([]);
+      expect(Array.isArray(result)).toBe(true);
+      expect(mockUserService.findDeletedUsers).toHaveBeenCalledWith(query);
+    });
+
+    it('should propagate service errors when fetching deleted users', async () => {
+      const query: GetUsersQueryDto = {};
+      const serviceError = new Error('Database error');
+      mockUserService.findDeletedUsers.mockRejectedValue(serviceError);
+
+      await expect(controller.getDeletedUsers(query)).rejects.toThrow(
+        'Database error',
+      );
+    });
+  });
+
+  describe('restoreUser', () => {
+    it('should delegate to service and return restored user', async () => {
+      const userId = 3;
+      const restoredUser = {
+        ...mockDeletedUser,
+        deletedAt: null,
+        updatedAt: new Date(),
+      };
+      mockUserService.restoreUser.mockResolvedValue(restoredUser);
+
+      const result = await controller.restoreUser(userId);
+
+      expect(result).toEqual(restoredUser);
+      expect(result.deletedAt).toBeNull();
+      expect(mockUserService.restoreUser).toHaveBeenCalledWith(userId);
+      expect(mockUserService.restoreUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('should propagate deleted user not found errors', async () => {
+      const userId = 999;
+      const serviceError = new Error('Deleted user not found');
+      mockUserService.restoreUser.mockRejectedValue(serviceError);
+
+      await expect(controller.restoreUser(userId)).rejects.toThrow(
+        'Deleted user not found',
+      );
+      expect(mockUserService.restoreUser).toHaveBeenCalledWith(userId);
+    });
+
+    it('should propagate service errors during restoration', async () => {
+      const userId = 1;
+      const serviceError = new Error('User is not deleted');
+      mockUserService.restoreUser.mockRejectedValue(serviceError);
+
+      await expect(controller.restoreUser(userId)).rejects.toThrow(
+        'User is not deleted',
+      );
+    });
+  });
+
+  describe('permanentlyDeleteUser', () => {
+    it('should delegate to service and return permanently deleted user', async () => {
+      const userId = 3;
+      mockUserService.permanentlyDeleteUser.mockResolvedValue(mockDeletedUser);
+
+      const result = await controller.permanentlyDeleteUser(userId);
+
+      expect(result).toEqual(mockDeletedUser);
+      expect(mockUserService.permanentlyDeleteUser).toHaveBeenCalledWith(
+        userId,
+      );
+      expect(mockUserService.permanentlyDeleteUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('should work with active users too', async () => {
+      const userId = 1;
+      mockUserService.permanentlyDeleteUser.mockResolvedValue(mockUser);
+
+      const result = await controller.permanentlyDeleteUser(userId);
+
+      expect(result).toEqual(mockUser);
+      expect(mockUserService.permanentlyDeleteUser).toHaveBeenCalledWith(
+        userId,
+      );
+    });
+
+    it('should propagate user not found errors', async () => {
+      const userId = 999;
+      const serviceError = new Error('User not found');
+      mockUserService.permanentlyDeleteUser.mockRejectedValue(serviceError);
+
+      await expect(controller.permanentlyDeleteUser(userId)).rejects.toThrow(
+        'User not found',
+      );
+      expect(mockUserService.permanentlyDeleteUser).toHaveBeenCalledWith(
+        userId,
+      );
+    });
+
+    it('should propagate database constraint errors', async () => {
+      const userId = 1;
+      const serviceError = new Error(
+        'Cannot delete user with foreign key constraints',
+      );
+      mockUserService.permanentlyDeleteUser.mockRejectedValue(serviceError);
+
+      await expect(controller.permanentlyDeleteUser(userId)).rejects.toThrow(
+        'Cannot delete user with foreign key constraints',
+      );
+    });
+  });
+
+  // ========================================
+  // HTTP-SPECIFIC CONCERNS TESTS (UPDATED)
   // ========================================
 
   describe('HTTP parameter parsing', () => {
-    it('should handle numeric id parameter correctly', async () => {
-      // This tests that ParseIntPipe is working correctly
+    it('should handle numeric id parameter correctly for all endpoints', async () => {
       const userId = 42;
-      mockUserService.findUserById.mockResolvedValue({
-        ...mockUser,
-        id: userId,
-      });
+      const userWithId = { ...mockUser, id: userId };
 
+      // Test regular endpoints
+      mockUserService.findUserById.mockResolvedValue(userWithId);
       await controller.getUserById(userId);
-
       expect(mockUserService.findUserById).toHaveBeenCalledWith(userId);
+
+      // Test soft delete endpoints
+      mockUserService.deleteUser.mockResolvedValue(userWithId);
+      await controller.deleteUser(userId);
+      expect(mockUserService.deleteUser).toHaveBeenCalledWith(userId);
+
+      mockUserService.restoreUser.mockResolvedValue(userWithId);
+      await controller.restoreUser(userId);
+      expect(mockUserService.restoreUser).toHaveBeenCalledWith(userId);
+
+      mockUserService.permanentlyDeleteUser.mockResolvedValue(userWithId);
+      await controller.permanentlyDeleteUser(userId);
+      expect(mockUserService.permanentlyDeleteUser).toHaveBeenCalledWith(
+        userId,
+      );
+
       expect(typeof userId).toBe('number');
     });
 
@@ -314,14 +501,11 @@ describe('UserController', () => {
       await controller.getUserByEmail(email);
 
       expect(mockUserService.findUserByEmail).toHaveBeenCalledWith(email);
-      expect(typeof email).toBe('string'); // Ensure it remains as string
+      expect(typeof email).toBe('string');
     });
   });
 
   describe('DTO validation (integration with ValidationPipe)', () => {
-    // Note: These tests assume ValidationPipe is configured globally
-    // In real scenarios, validation errors would be thrown by the pipe before reaching the controller
-
     it('should pass valid CreateUserDto to service', async () => {
       const validDto: CreateUserDto = {
         email: 'valid@example.com',
@@ -331,6 +515,9 @@ describe('UserController', () => {
         id: 1,
         email: validDto.email,
         name: validDto.name ?? null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
       };
       mockUserService.createUser.mockResolvedValue(createdUser);
 
@@ -352,112 +539,231 @@ describe('UserController', () => {
       expect(mockUserService.updateUser).toHaveBeenCalledWith(1, validDto);
     });
 
-    it('should pass valid GetUsersQueryDto to service', async () => {
+    it('should pass valid GetUsersQueryDto to service for all list endpoints', async () => {
       const validQuery: GetUsersQueryDto = {
         skip: 0,
         take: 10,
         search: 'test',
-        orderBy: 'email',
+        orderBy: 'createdAt', // Updated to use new timestamp field
         sortOrder: 'asc',
       };
+
+      // Test active users endpoint
       mockUserService.findManyUsers.mockResolvedValue(mockUsers);
-
       await controller.getUsers(validQuery);
-
       expect(mockUserService.findManyUsers).toHaveBeenCalledWith(validQuery);
+
+      // Test deleted users endpoint
+      mockUserService.findDeletedUsers.mockResolvedValue([mockDeletedUser]);
+      await controller.getDeletedUsers(validQuery);
+      expect(mockUserService.findDeletedUsers).toHaveBeenCalledWith(validQuery);
     });
   });
 
   // ========================================
-  // CONTROLLER RESPONSIBILITY TESTS
+  // CONTROLLER RESPONSIBILITY TESTS (UPDATED)
   // ========================================
 
   describe('Controller responsibilities', () => {
-    it('should only handle HTTP concerns, not business logic', async () => {
-      // This test ensures the controller doesn't contain business logic
+    it('should only handle HTTP concerns for all endpoints', async () => {
       const query: GetUsersQueryDto = { search: 'test' };
+
+      // Test that controller passes data as-is for all endpoints
       mockUserService.findManyUsers.mockResolvedValue(mockUsers);
-
       await controller.getUsers(query);
-
-      // Controller should pass the query as-is, without any transformation
       expect(mockUserService.findManyUsers).toHaveBeenCalledWith(query);
 
-      // Controller should not be building where clauses, order by, etc.
-      // All business logic should be in the service
+      mockUserService.findDeletedUsers.mockResolvedValue([mockDeletedUser]);
+      await controller.getDeletedUsers(query);
+      expect(mockUserService.findDeletedUsers).toHaveBeenCalledWith(query);
+
+      // Controller should not transform any data
     });
 
-    it('should not catch or transform service errors', async () => {
-      // Controller should let service errors bubble up to global exception filter
+    it('should not catch or transform service errors from any endpoint', async () => {
       const serviceError = new Error('Business logic error');
-      mockUserService.findUserById.mockRejectedValue(serviceError);
 
+      // Test error propagation for all endpoints
+      mockUserService.findUserById.mockRejectedValue(serviceError);
       await expect(controller.getUserById(1)).rejects.toThrow(
         'Business logic error',
       );
 
-      // No error transformation should happen in controller
+      mockUserService.restoreUser.mockRejectedValue(serviceError);
+      await expect(controller.restoreUser(1)).rejects.toThrow(
+        'Business logic error',
+      );
+
+      mockUserService.permanentlyDeleteUser.mockRejectedValue(serviceError);
+      await expect(controller.permanentlyDeleteUser(1)).rejects.toThrow(
+        'Business logic error',
+      );
     });
 
-    it('should not validate business rules', async () => {
-      // Controller should not validate email uniqueness, user existence, etc.
-      // These are business concerns handled by the service
-      const createUserDto: CreateUserDto = {
-        email: 'test@example.com',
-        name: 'Test User',
-      };
+    it('should not validate business rules for soft delete operations', async () => {
+      const userId = 1;
 
-      mockUserService.createUser.mockResolvedValue({
-        id: 1,
-        email: createUserDto.email,
-        name: createUserDto.name ?? null,
+      // Controller should not check if user is already deleted, exists, etc.
+      mockUserService.deleteUser.mockResolvedValue({
+        ...mockUser,
+        deletedAt: new Date(),
       });
+      await controller.deleteUser(userId);
+      expect(mockUserService.deleteUser).toHaveBeenCalledWith(userId);
 
-      await controller.createUser(createUserDto);
+      mockUserService.restoreUser.mockResolvedValue({
+        ...mockUser,
+        deletedAt: null,
+      });
+      await controller.restoreUser(userId);
+      expect(mockUserService.restoreUser).toHaveBeenCalledWith(userId);
 
-      // Controller just passes data to service
-      expect(mockUserService.createUser).toHaveBeenCalledWith(createUserDto);
+      // All business logic validation should be in service
     });
   });
 
   // ========================================
-  // EDGE CASES
+  // EDGE CASES (UPDATED)
   // ========================================
 
   describe('Edge cases', () => {
-    it('should handle service returning empty array', async () => {
+    it('should handle service returning empty array for all list endpoints', async () => {
       const query: GetUsersQueryDto = { search: 'nonexistent' };
+
+      // Test empty results for active users
       mockUserService.findManyUsers.mockResolvedValue([]);
+      const result1 = await controller.getUsers(query);
+      expect(result1).toEqual([]);
+      expect(Array.isArray(result1)).toBe(true);
 
-      const result = await controller.getUsers(query);
-
-      expect(result).toEqual([]);
-      expect(Array.isArray(result)).toBe(true);
+      // Test empty results for deleted users
+      mockUserService.findDeletedUsers.mockResolvedValue([]);
+      const result2 = await controller.getDeletedUsers(query);
+      expect(result2).toEqual([]);
+      expect(Array.isArray(result2)).toBe(true);
     });
 
-    it('should handle undefined optional fields in DTOs', async () => {
+    it('should handle undefined optional fields in DTOs with timestamps', async () => {
       const createUserDto: CreateUserDto = {
         email: 'test@example.com',
         // name is optional and undefined
       };
-      const createdUser = { id: 1, email: 'test@example.com', name: null };
+      const createdUser = {
+        id: 1,
+        email: 'test@example.com',
+        name: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
       mockUserService.createUser.mockResolvedValue(createdUser);
 
       const result = await controller.createUser(createUserDto);
 
       expect(result).toEqual(createdUser);
+      expect(result.createdAt).toBeDefined();
+      expect(result.updatedAt).toBeDefined();
+      expect(result.deletedAt).toBeNull();
       expect(mockUserService.createUser).toHaveBeenCalledWith(createUserDto);
     });
 
-    it('should handle empty update DTO', async () => {
+    it('should handle empty update DTO with timestamp updates', async () => {
       const updateUserDto: UpdateUserDto = {}; // All fields optional
-      const updatedUser = mockUser; // No changes
+      const updatedUser = {
+        ...mockUser,
+        updatedAt: new Date(), // updatedAt should be updated even for empty updates
+      };
       mockUserService.updateUser.mockResolvedValue(updatedUser);
 
       const result = await controller.updateUser(1, updateUserDto);
 
       expect(result).toEqual(updatedUser);
+      expect(result.updatedAt).not.toEqual(mockUser.updatedAt); // Should be updated
       expect(mockUserService.updateUser).toHaveBeenCalledWith(1, updateUserDto);
+    });
+
+    it('should handle soft delete operations on users with different states', async () => {
+      // Test deleting active user
+      const activeUser = mockUser;
+      const softDeletedUser = {
+        ...activeUser,
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockUserService.deleteUser.mockResolvedValue(softDeletedUser);
+
+      const result1 = await controller.deleteUser(activeUser.id);
+      expect(result1.deletedAt).toBeTruthy();
+
+      // Test restoring deleted user
+      const restoredUser = {
+        ...softDeletedUser,
+        deletedAt: null,
+        updatedAt: new Date(),
+      };
+      mockUserService.restoreUser.mockResolvedValue(restoredUser);
+
+      const result2 = await controller.restoreUser(softDeletedUser.id);
+      expect(result2.deletedAt).toBeNull();
+    });
+  });
+
+  // ========================================
+  // NEW ENDPOINT SPECIFIC TESTS
+  // ========================================
+
+  describe('Soft delete specific edge cases', () => {
+    it('should handle rapid soft delete and restore operations', async () => {
+      const userId = 1;
+      const deletedUser = { ...mockUser, deletedAt: new Date() };
+      const restoredUser = { ...mockUser, deletedAt: null };
+
+      // Rapid delete
+      mockUserService.deleteUser.mockResolvedValue(deletedUser);
+      const deleteResult = await controller.deleteUser(userId);
+      expect(deleteResult.deletedAt).toBeTruthy();
+
+      // Rapid restore
+      mockUserService.restoreUser.mockResolvedValue(restoredUser);
+      const restoreResult = await controller.restoreUser(userId);
+      expect(restoreResult.deletedAt).toBeNull();
+
+      // Controller should handle this without issues
+      expect(mockUserService.deleteUser).toHaveBeenCalledWith(userId);
+      expect(mockUserService.restoreUser).toHaveBeenCalledWith(userId);
+    });
+
+    it('should handle permanent delete of both active and soft deleted users', async () => {
+      // Permanent delete of active user
+      mockUserService.permanentlyDeleteUser.mockResolvedValue(mockUser);
+      const result1 = await controller.permanentlyDeleteUser(1);
+      expect(result1).toEqual(mockUser);
+
+      // Permanent delete of soft deleted user
+      mockUserService.permanentlyDeleteUser.mockResolvedValue(mockDeletedUser);
+      const result2 = await controller.permanentlyDeleteUser(3);
+      expect(result2).toEqual(mockDeletedUser);
+
+      expect(mockUserService.permanentlyDeleteUser).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle querying deleted users with various filters', async () => {
+      const complexQuery: GetUsersQueryDto = {
+        skip: 5,
+        take: 15,
+        search: 'deleted',
+        orderBy: 'updatedAt',
+        sortOrder: 'desc',
+      };
+
+      mockUserService.findDeletedUsers.mockResolvedValue([mockDeletedUser]);
+      const result = await controller.getDeletedUsers(complexQuery);
+
+      expect(result).toEqual([mockDeletedUser]);
+      expect(mockUserService.findDeletedUsers).toHaveBeenCalledWith(
+        complexQuery,
+      );
+      // Controller should pass complex queries without modification
     });
   });
 });

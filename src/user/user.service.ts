@@ -14,11 +14,11 @@ import { CreateUserDto, GetUsersQueryDto, UpdateUserDto } from './dto';
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async findManyUsers(query: GetUsersQueryDto): Promise<User[]> {
-    // ✅ Business logic for building search criteria
-    const searchCriteria = this.buildSearchCriteria(query);
-
-    // ✅ Business logic for pagination and ordering
+  async findManyUsers(
+    query: GetUsersQueryDto,
+    includeDeleted: boolean = false,
+  ): Promise<User[]> {
+    const searchCriteria = this.buildSearchCriteria(query, includeDeleted);
     const { skip, take } = this.buildPaginationParams(query);
     const orderBy = this.buildOrderByClause(query);
 
@@ -30,10 +30,19 @@ export class UserService {
     });
   }
 
-  async findUserById(id: number): Promise<User> {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+  async findUserById(
+    id: number,
+    includeDeleted: boolean = false,
+  ): Promise<User> {
+    const whereClause: Prisma.UserWhereInput = {
+      id,
+      ...(includeDeleted ? {} : { deletedAt: null }),
+    };
 
-    // ✅ Business logic for validation
+    const user = await this.prisma.user.findFirst({
+      where: whereClause,
+    });
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -41,10 +50,19 @@ export class UserService {
     return user;
   }
 
-  async findUserByEmail(email: string): Promise<User> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+  async findUserByEmail(
+    email: string,
+    includeDeleted: boolean = false,
+  ): Promise<User> {
+    const whereClause: Prisma.UserWhereInput = {
+      email,
+      ...(includeDeleted ? {} : { deletedAt: null }),
+    };
 
-    // ✅ Business logic for validation
+    const user = await this.prisma.user.findFirst({
+      where: whereClause,
+    });
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -86,25 +104,91 @@ export class UserService {
 
   async deleteUser(id: number): Promise<User> {
     try {
-      // ✅ Business logic for validation
       await this.ensureUserExists(id);
 
-      return await this.prisma.user.delete({
+      return await this.prisma.user.update({
         where: { id },
+        data: {
+          deletedAt: new Date(),
+        },
       });
     } catch (error) {
       this.handleDatabaseError(error, 'Failed to delete user');
     }
   }
 
+  async permanentlyDeleteUser(id: number): Promise<User> {
+    try {
+      // Check if user exists (including soft deleted)
+      await this.ensureUserExists(id, true);
+
+      return await this.prisma.user.delete({
+        where: { id },
+      });
+    } catch (error) {
+      this.handleDatabaseError(error, 'Failed to permanently delete user');
+    }
+  }
+
+  async restoreUser(id: number): Promise<User> {
+    try {
+      // Find soft deleted user
+      const user = await this.prisma.user.findFirst({
+        where: {
+          id,
+          deletedAt: { not: null },
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException('Deleted user not found');
+      }
+
+      return await this.prisma.user.update({
+        where: { id },
+        data: {
+          deletedAt: null,
+        },
+      });
+    } catch (error) {
+      this.handleDatabaseError(error, 'Failed to restore user');
+    }
+  }
+
+  async findDeletedUsers(query: GetUsersQueryDto): Promise<User[]> {
+    const searchCriteria = this.buildSearchCriteria(query, false);
+    const { skip, take } = this.buildPaginationParams(query);
+    const orderBy = this.buildOrderByClause(query);
+
+    return this.prisma.user.findMany({
+      skip,
+      take,
+      where: {
+        ...searchCriteria,
+        deletedAt: { not: null },
+      },
+      orderBy,
+    });
+  }
+
   // ========================================
   // PRIVATE BUSINESS LOGIC METHODS
   // ========================================
 
-  private buildSearchCriteria(query: GetUsersQueryDto): Prisma.UserWhereInput {
-    if (!query.search) return {};
+  private buildSearchCriteria(
+    query: GetUsersQueryDto,
+    includeDeleted: boolean = false,
+  ): Prisma.UserWhereInput {
+    const baseWhere: Prisma.UserWhereInput = {
+      ...(includeDeleted ? {} : { deletedAt: null }),
+    };
+
+    if (!query.search) {
+      return baseWhere;
+    }
 
     return {
+      ...baseWhere,
       OR: [
         { email: { contains: query.search.trim(), mode: 'insensitive' } },
         { name: { contains: query.search.trim(), mode: 'insensitive' } },
@@ -122,32 +206,54 @@ export class UserService {
   private buildOrderByClause(
     query: GetUsersQueryDto,
   ): Prisma.UserOrderByWithRelationInput {
-    const validOrderFields = ['id', 'email', 'name'];
+    const validOrderFields = [
+      'id',
+      'email',
+      'name',
+      'createdAt',
+      'updatedAt',
+      'deletedAt',
+    ];
 
     if (query.orderBy && validOrderFields.includes(query.orderBy)) {
       return { [query.orderBy]: query.sortOrder || 'asc' };
     }
 
     // ✅ Business rule: default ordering
-    return { id: 'asc' };
+    return { createdAt: 'desc' };
   }
 
   private async validateEmailUniqueness(
     email: string,
     excludeId?: number,
   ): Promise<void> {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
+    // Use findFirst instead of findUnique to filter by deletedAt
+    const whereClause: Prisma.UserWhereInput = {
+      email,
+      deletedAt: null, // Only check active users
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    };
+
+    const existingUser = await this.prisma.user.findFirst({
+      where: whereClause,
     });
 
-    if (existingUser && (!excludeId || existingUser.id !== excludeId)) {
+    if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
   }
 
-  private async ensureUserExists(id: number): Promise<void> {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
+  private async ensureUserExists(
+    id: number,
+    includeDeleted: boolean = false,
+  ): Promise<void> {
+    const whereClause: Prisma.UserWhereInput = {
+      id,
+      ...(includeDeleted ? {} : { deletedAt: null }),
+    };
+
+    const user = await this.prisma.user.findFirst({
+      where: whereClause,
     });
 
     if (!user) {
