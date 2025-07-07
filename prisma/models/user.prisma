@@ -6,5 +6,8 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  ownedNotes Note[]           @relation("owned_notes")
+  noteAccess UserNoteAccess[]
+
   @@map("users")
 }

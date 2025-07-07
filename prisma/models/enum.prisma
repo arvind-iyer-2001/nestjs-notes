@@ -1,0 +1,4 @@
+enum AccessType {
+  VIEW
+  EDIT
+}

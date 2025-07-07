@@ -1,0 +1,38 @@
+model Note {
+  id        Int       @id @default(autoincrement())
+  title     String
+  content   String    @db.Text
+  isPublic  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relationships
+  ownerId   Int
+  owner     User @relation("owned_notes", fields: [ownerId], references: [id])
+  createdBy Int
+  updatedBy Int
+
+  // Note access permissions
+  noteAccess UserNoteAccess[]
+
+  @@map("notes")
+}
+
+model UserNoteAccess {
+  id         Int        @id @default(autoincrement())
+  userId     Int
+  noteId     Int
+  accessType AccessType
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id])
+  note Note @relation(fields: [noteId], references: [id])
+
+  // Constraints
+  @@unique([userId, noteId])
+  @@map("user_note_access")
+}
