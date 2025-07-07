@@ -243,7 +243,7 @@ export class UserService {
     }
   }
 
-  private async ensureUserExists(
+  async ensureUserExists(
     id: number,
     includeDeleted: boolean = false,
   ): Promise<void> {
