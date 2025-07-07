@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma.service';
 import { User, Prisma } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateUserDto, GetUsersQueryDto, UpdateUserDto } from './dto';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UserService {
@@ -17,7 +18,7 @@ export class UserService {
   async findManyUsers(
     query: GetUsersQueryDto,
     includeDeleted: boolean = false,
-  ): Promise<User[]> {
+  ): Promise<Omit<User, 'password'>[]> {
     const searchCriteria = this.buildSearchCriteria(query, includeDeleted);
     const { skip, take } = this.buildPaginationParams(query);
     const orderBy = this.buildOrderByClause(query);
@@ -27,13 +28,21 @@ export class UserService {
       take,
       where: searchCriteria,
       orderBy,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+      },
     });
   }
 
   async findUserById(
     id: number,
     includeDeleted: boolean = false,
-  ): Promise<User> {
+  ): Promise<Omit<User, 'password'>> {
     const whereClause: Prisma.UserWhereInput = {
       id,
       ...(includeDeleted ? {} : { deletedAt: null }),
@@ -41,6 +50,14 @@ export class UserService {
 
     const user = await this.prisma.user.findFirst({
       where: whereClause,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+      },
     });
 
     if (!user) {
@@ -53,7 +70,7 @@ export class UserService {
   async findUserByEmail(
     email: string,
     includeDeleted: boolean = false,
-  ): Promise<User> {
+  ): Promise<Omit<User, 'password'>> {
     const whereClause: Prisma.UserWhereInput = {
       email,
       ...(includeDeleted ? {} : { deletedAt: null }),
@@ -61,6 +78,14 @@ export class UserService {
 
     const user = await this.prisma.user.findFirst({
       where: whereClause,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+      },
     });
 
     if (!user) {
@@ -70,13 +95,27 @@ export class UserService {
     return user;
   }
 
-  async createUser(userData: CreateUserDto): Promise<User> {
+  async createUser(userData: CreateUserDto): Promise<Omit<User, 'password'>> {
     try {
       // ✅ Business logic for user creation
       await this.validateEmailUniqueness(userData.email);
 
+      // Hash the password before saving
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+
       return await this.prisma.user.create({
-        data: userData,
+        data: {
+          ...userData,
+          password: hashedPassword,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+        },
       });
     } catch (error) {
       // ✅ Business logic for error handling
@@ -84,7 +123,7 @@ export class UserService {
     }
   }
 
-  async updateUser(id: number, userData: UpdateUserDto): Promise<User> {
+  async updateUser(id: number, userData: UpdateUserDto): Promise<Omit<User, 'password'>> {
     try {
       // ✅ Business logic for validation
       await this.ensureUserExists(id);
@@ -96,13 +135,21 @@ export class UserService {
       return await this.prisma.user.update({
         where: { id },
         data: userData,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+        },
       });
     } catch (error) {
       this.handleDatabaseError(error, 'Failed to update user');
     }
   }
 
-  async deleteUser(id: number): Promise<User> {
+  async deleteUser(id: number): Promise<Omit<User, 'password'>> {
     try {
       await this.ensureUserExists(id);
 
@@ -111,26 +158,42 @@ export class UserService {
         data: {
           deletedAt: new Date(),
         },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+        },
       });
     } catch (error) {
       this.handleDatabaseError(error, 'Failed to delete user');
     }
   }
 
-  async permanentlyDeleteUser(id: number): Promise<User> {
+  async permanentlyDeleteUser(id: number): Promise<Omit<User, 'password'>> {
     try {
       // Check if user exists (including soft deleted)
       await this.ensureUserExists(id, true);
 
       return await this.prisma.user.delete({
         where: { id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+        },
       });
     } catch (error) {
       this.handleDatabaseError(error, 'Failed to permanently delete user');
     }
   }
 
-  async restoreUser(id: number): Promise<User> {
+  async restoreUser(id: number): Promise<Omit<User, 'password'>> {
     try {
       // Find soft deleted user
       const user = await this.prisma.user.findFirst({
@@ -149,13 +212,21 @@ export class UserService {
         data: {
           deletedAt: null,
         },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+        },
       });
     } catch (error) {
       this.handleDatabaseError(error, 'Failed to restore user');
     }
   }
 
-  async findDeletedUsers(query: GetUsersQueryDto): Promise<User[]> {
+  async findDeletedUsers(query: GetUsersQueryDto): Promise<Omit<User, 'password'>[]> {
     const searchCriteria = this.buildSearchCriteria(query, false);
     const { skip, take } = this.buildPaginationParams(query);
     const orderBy = this.buildOrderByClause(query);
@@ -168,6 +239,14 @@ export class UserService {
         deletedAt: { not: null },
       },
       orderBy,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+      },
     });
   }
 

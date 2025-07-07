@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from '@prisma/client';
+
+type UserWithoutPassword = Omit<User, 'password'>;
 import { GetUsersQueryDto, CreateUserDto, UpdateUserDto } from './dto';
 
 @Controller('users')
@@ -21,31 +23,31 @@ export class UserController {
   @Get()
   async getUsers(
     @Query(ValidationPipe) query: GetUsersQueryDto,
-  ): Promise<User[]> {
+  ): Promise<UserWithoutPassword[]> {
     return this.userService.findManyUsers(query);
   }
 
   @Get('deleted')
   async getDeletedUsers(
     @Query(ValidationPipe) query: GetUsersQueryDto,
-  ): Promise<User[]> {
+  ): Promise<UserWithoutPassword[]> {
     return this.userService.findDeletedUsers(query);
   }
 
   @Get(':id')
-  async getUserById(@Param('id', ParseIntPipe) id: number): Promise<User> {
+  async getUserById(@Param('id', ParseIntPipe) id: number): Promise<UserWithoutPassword> {
     return this.userService.findUserById(id);
   }
 
   @Get('email/:email')
-  async getUserByEmail(@Param('email') email: string): Promise<User> {
+  async getUserByEmail(@Param('email') email: string): Promise<UserWithoutPassword> {
     return this.userService.findUserByEmail(email);
   }
 
   @Post()
   async createUser(
     @Body(ValidationPipe) userData: CreateUserDto,
-  ): Promise<User> {
+  ): Promise<UserWithoutPassword> {
     return this.userService.createUser(userData);
   }
 
@@ -53,19 +55,19 @@ export class UserController {
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body(ValidationPipe) userData: UpdateUserDto,
-  ): Promise<User> {
+  ): Promise<UserWithoutPassword> {
     return this.userService.updateUser(id, userData);
   }
 
   // Soft delete
   @Delete(':id')
-  async deleteUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
+  async deleteUser(@Param('id', ParseIntPipe) id: number): Promise<UserWithoutPassword> {
     return this.userService.deleteUser(id);
   }
 
   // Restore soft deleted user
   @Put(':id/restore')
-  async restoreUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
+  async restoreUser(@Param('id', ParseIntPipe) id: number): Promise<UserWithoutPassword> {
     return this.userService.restoreUser(id);
   }
 
@@ -73,7 +75,7 @@ export class UserController {
   @Delete(':id/permanent')
   async permanentlyDeleteUser(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<User> {
+  ): Promise<UserWithoutPassword> {
     return this.userService.permanentlyDeleteUser(id);
   }
 }
