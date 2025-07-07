@@ -13,6 +13,7 @@ describe('UserController', () => {
     id: 1,
     email: 'test@example.com',
     name: 'Test User',
+    password: 'hashedPassword123',
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-01T00:00:00Z'),
     deletedAt: null,
@@ -22,6 +23,7 @@ describe('UserController', () => {
     id: 3,
     email: 'deleted@example.com',
     name: 'Deleted User',
+    password: 'hashedPassword123',
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-02T00:00:00Z'),
     deletedAt: new Date('2024-01-02T00:00:00Z'),
@@ -33,6 +35,7 @@ describe('UserController', () => {
       id: 2,
       email: 'test2@example.com',
       name: 'Test User 2',
+      password: 'hashedPassword123',
       createdAt: new Date('2024-01-01T00:00:00Z'),
       updatedAt: new Date('2024-01-01T00:00:00Z'),
       deletedAt: null,
@@ -171,6 +174,7 @@ describe('UserController', () => {
     const createUserDto: CreateUserDto = {
       email: 'new@example.com',
       name: 'New User',
+      password: 'password123',
     };
 
     it('should delegate to service and return created user with timestamps', async () => {
@@ -178,6 +182,7 @@ describe('UserController', () => {
         id: 3,
         email: createUserDto.email,
         name: createUserDto.name ?? null,
+        password: 'hashedPassword123',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -510,11 +515,13 @@ describe('UserController', () => {
       const validDto: CreateUserDto = {
         email: 'valid@example.com',
         name: 'Valid Name',
+        password: 'password123',
       };
       const createdUser = {
         id: 1,
         email: validDto.email,
         name: validDto.name ?? null,
+        password: 'hashedPassword123',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -646,12 +653,14 @@ describe('UserController', () => {
     it('should handle undefined optional fields in DTOs with timestamps', async () => {
       const createUserDto: CreateUserDto = {
         email: 'test@example.com',
+        password: 'password123',
         // name is optional and undefined
       };
       const createdUser = {
         id: 1,
         email: 'test@example.com',
         name: null,
+        password: 'hashedPassword123',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,

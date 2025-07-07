@@ -14,6 +14,7 @@ describe('UserService', () => {
     id: 1,
     email: 'test@example.com',
     name: 'Test User',
+    password: 'hashedPassword123',
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-01T00:00:00Z'),
     deletedAt: null, // Active user
@@ -23,6 +24,7 @@ describe('UserService', () => {
     id: 3,
     email: 'deleted@example.com',
     name: 'Deleted User',
+    password: 'hashedPassword123',
     createdAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-01T00:00:00Z'),
     deletedAt: new Date('2024-01-02T00:00:00Z'), // Soft deleted
@@ -34,6 +36,7 @@ describe('UserService', () => {
       id: 2,
       email: 'user2@example.com',
       name: 'User Two',
+      password: 'hashedPassword123',
       createdAt: new Date('2024-01-01T00:00:00Z'),
       updatedAt: new Date('2024-01-01T00:00:00Z'),
       deletedAt: null,
@@ -274,12 +277,14 @@ describe('UserService', () => {
     const createUserData = {
       email: 'new@example.com',
       name: 'New User',
+      password: 'password123',
     };
 
     it('should create and return a new user with timestamps', async () => {
       const createdUser = {
         id: 3,
         ...createUserData,
+        password: 'hashedPassword123',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -302,6 +307,7 @@ describe('UserService', () => {
         data: {
           email: createUserData.email,
           name: createUserData.name,
+          password: expect.any(String),
         },
       });
     });
@@ -333,6 +339,7 @@ describe('UserService', () => {
       const result = await service.createUser({
         email: 'deleted@example.com',
         name: 'New User',
+        password: 'password123',
       });
 
       expect(result).toEqual(createdUser);
@@ -742,6 +749,7 @@ describe('UserService', () => {
         id: 5,
         email: 'nullname@example.com',
         name: null,
+        password: 'hashedPassword123',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -752,6 +760,7 @@ describe('UserService', () => {
 
       const result = await service.createUser({
         email: 'nullname@example.com',
+        password: 'password123',
       });
 
       expect(result).toEqual(userWithNullName);
