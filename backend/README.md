@@ -57,6 +57,31 @@ $ pnpm run test:e2e
 $ pnpm run test:cov
 ```
 
+## Database operations
+
+```bash
+# create and apply migration
+$ pnpm run db:migrate
+
+# generate prisma client
+$ pnpm run db:generate
+
+# open prisma studio GUI
+$ pnpm run db:studio
+
+# run database seeding
+$ pnpm run db:seed
+
+# reset database and run migrations
+$ pnpm run db:reset
+
+# push schema changes without migration
+$ pnpm run db:push
+
+# format prisma schema files
+$ pnpm run db:format
+```
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
