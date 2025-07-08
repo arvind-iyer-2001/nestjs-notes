@@ -11,7 +11,6 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto';
-import { Public } from './public.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ApiKeyAuth } from './api-key.decorator';
 import { RequestWithUser } from './interfaces/request-with-user.interface';

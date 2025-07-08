@@ -30,11 +30,11 @@ export class ApiKeyGuard implements CanActivate {
   private extractApiKeyFromHeader(request: Request): string | undefined {
     // Check for API key in X-API-Key header
     const apiKeyHeader = request.headers['x-api-key'];
-    
+
     if (Array.isArray(apiKeyHeader)) {
       return apiKeyHeader[0];
     }
-    
+
     return apiKeyHeader;
   }
 }

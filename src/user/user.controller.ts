@@ -35,12 +35,16 @@ export class UserController {
   }
 
   @Get(':id')
-  async getUserById(@Param('id', ParseIntPipe) id: number): Promise<UserWithoutPassword> {
+  async getUserById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<UserWithoutPassword> {
     return this.userService.findUserById(id);
   }
 
   @Get('email/:email')
-  async getUserByEmail(@Param('email') email: string): Promise<UserWithoutPassword> {
+  async getUserByEmail(
+    @Param('email') email: string,
+  ): Promise<UserWithoutPassword> {
     return this.userService.findUserByEmail(email);
   }
 
@@ -61,13 +65,17 @@ export class UserController {
 
   // Soft delete
   @Delete(':id')
-  async deleteUser(@Param('id', ParseIntPipe) id: number): Promise<UserWithoutPassword> {
+  async deleteUser(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<UserWithoutPassword> {
     return this.userService.deleteUser(id);
   }
 
   // Restore soft deleted user
   @Put(':id/restore')
-  async restoreUser(@Param('id', ParseIntPipe) id: number): Promise<UserWithoutPassword> {
+  async restoreUser(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<UserWithoutPassword> {
     return this.userService.restoreUser(id);
   }
 

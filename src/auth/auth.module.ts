@@ -24,7 +24,13 @@ import { PrismaService } from '../prisma.service';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, LocalStrategy, ApiKeyGuard, PrismaService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    LocalStrategy,
+    ApiKeyGuard,
+    PrismaService,
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtStrategy],
 })

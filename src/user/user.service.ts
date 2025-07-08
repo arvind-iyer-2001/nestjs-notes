@@ -123,7 +123,10 @@ export class UserService {
     }
   }
 
-  async updateUser(id: number, userData: UpdateUserDto): Promise<Omit<User, 'password'>> {
+  async updateUser(
+    id: number,
+    userData: UpdateUserDto,
+  ): Promise<Omit<User, 'password'>> {
     try {
       // ✅ Business logic for validation
       await this.ensureUserExists(id);
@@ -226,7 +229,9 @@ export class UserService {
     }
   }
 
-  async findDeletedUsers(query: GetUsersQueryDto): Promise<Omit<User, 'password'>[]> {
+  async findDeletedUsers(
+    query: GetUsersQueryDto,
+  ): Promise<Omit<User, 'password'>[]> {
     const searchCriteria = this.buildSearchCriteria(query, false);
     const { skip, take } = this.buildPaginationParams(query);
     const orderBy = this.buildOrderByClause(query);

@@ -105,7 +105,7 @@ export class AuthService {
       return null;
     }
 
-    const { password: _, ...result } = user;
+    const { password: _pwd, ...result } = user;
     return result;
   }
 
