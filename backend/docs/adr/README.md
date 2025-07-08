@@ -6,11 +6,11 @@ This directory contains Architecture Decision Records for the Notes Management A
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [001](./001-database-schema-design.md) | Database Schema Design and Relationships | Accepted | 2025-01-07 |
-| [002](./002-access-control-system.md) | Access Control System Architecture | Accepted | 2025-01-07 |
-| [003](./003-soft-delete-pattern.md) | Soft Delete Pattern Implementation | Accepted | 2025-01-07 |
-| [004](./004-module-architecture.md) | Module Architecture and Service Dependencies | Accepted | 2025-01-07 |
-| [005](./005-authentication-strategy.md) | Authentication Strategy and Current Implementation | Accepted (Temporary) | 2025-01-07 |
+| [001](001-database-schema-design.md) | Database Schema Design and Relationships | Accepted | 2025-01-07 |
+| [002](002-access-control-system.md) | Access Control System Architecture | Accepted | 2025-01-07 |
+| [003](003-soft-delete-pattern.md) | Soft Delete Pattern Implementation | Accepted | 2025-01-07 |
+| [004](004-module-architecture.md) | Module Architecture and Service Dependencies | Accepted | 2025-01-07 |
+| [005](005-authentication-strategy.md) | Authentication Strategy and Current Implementation | Accepted (Temporary) | 2025-01-07 |
 
 ## ADR Template
 
