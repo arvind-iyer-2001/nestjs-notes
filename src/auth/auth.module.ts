@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { LocalStrategy } from './local.strategy';
+import { ApiKeyGuard } from './api-key.guard';
 import { PrismaService } from '../prisma.service';
 
 @Module({
@@ -23,7 +24,7 @@ import { PrismaService } from '../prisma.service';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, LocalStrategy, PrismaService],
+  providers: [AuthService, JwtStrategy, LocalStrategy, ApiKeyGuard, PrismaService],
   controllers: [AuthController],
   exports: [AuthService, JwtStrategy],
 })

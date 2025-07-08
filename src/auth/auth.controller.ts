@@ -13,20 +13,21 @@ import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto';
 import { Public } from './public.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { ApiKeyAuth } from './api-key.decorator';
 import { RequestWithUser } from './interfaces/request-with-user.interface';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Public()
+  @ApiKeyAuth()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
-  @Public()
+  @ApiKeyAuth()
   @UseGuards(AuthGuard('local'))
   @Post('login')
   @HttpCode(HttpStatus.OK)
